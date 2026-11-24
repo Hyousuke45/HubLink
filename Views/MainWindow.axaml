@@ -3,20 +3,229 @@
         xmlns:vm="using:HubLink.ViewModels"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        mc:Ignorable="d" d:DesignWidth="1120" d:DesignHeight="760"
         x:Class="HubLink.Views.MainWindow"
-        x:DataType="vm:MainViewModel"
-        Icon="/Assets/avalonia-logo.ico"
-        Title="HubLink">
+        x:DataType="vm:MainWindowViewModel"
+        Title="HubLink — Regional Logistics Data Exchange"
+        Width="1120" Height="760"
+        MinWidth="900" MinHeight="620"
+        Background="#F4F6F9">
 
-    <Design.DataContext>
-        <!-- This only sets the DataContext for the previewer in an IDE,
-             to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
-        <vm:MainViewModel />
-    </Design.DataContext>
+	<Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto" Margin="20" RowSpacing="12">
 
-    <TextBox Text="{Binding Greeting}"
-             HorizontalAlignment="Center"
-             VerticalAlignment="Center" />
+		<!-- Row 0: Header & Primary Actions -->
+		<Border Grid.Row="0" Background="#1E293B" CornerRadius="8" Padding="16,14">
+			<Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+				<StackPanel Spacing="2" VerticalAlignment="Center">
+					<TextBlock Text="HubLink — Regional Logistics Data Exchange"
+                               FontSize="19" FontWeight="Bold" Foreground="White" />
+					<TextBlock Text="{Binding SyncStatusBanner}"
+                               FontSize="12.5" Foreground="#CBD5E1" />
+				</StackPanel>
 
+				<StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+					<Button Content="Refresh"
+                            Command="{Binding RefreshCommand}"
+                            Background="#2563EB" Foreground="White"
+                            FontWeight="SemiBold" Padding="14,8" CornerRadius="6" />
+
+					<Button Content="Retry"
+                            Command="{Binding RetryCommand}"
+                            IsVisible="{Binding HasError}"
+                            Background="#DC2626" Foreground="White"
+                            FontWeight="SemiBold" Padding="14,8" CornerRadius="6" />
+
+					<Button x:Name="ExportCsvButton"
+                            Content="Export CSV"
+                            Command="{Binding ExportCsvCommand}"
+                            Background="#059669" Foreground="White"
+                            FontWeight="SemiBold" Padding="14,8" CornerRadius="6" />
+				</StackPanel>
+			</Grid>
+		</Border>
+
+		<!-- Row 1: Configurable Service & Branch Settings -->
+		<Border Grid.Row="1" Background="White" BorderBrush="#E2E8F0" BorderThickness="1"
+                CornerRadius="8" Padding="14,10">
+			<Grid ColumnDefinitions="2.2*,1.5*,1*,1*,0.7*,Auto" ColumnSpacing="10">
+
+				<StackPanel Grid.Column="0" Spacing="3">
+					<TextBlock Text="Service Base URL" FontSize="11.5" FontWeight="SemiBold" Foreground="#475569" />
+					<TextBox Text="{Binding BaseUrl}" PlaceholderText="http://127.0.0.1:5080" />
+				</StackPanel>
+
+				<StackPanel Grid.Column="1" Spacing="3">
+					<TextBlock Text="Endpoint Path" FontSize="11.5" FontWeight="SemiBold" Foreground="#475569" />
+					<TextBox Text="{Binding EndpointPath}" PlaceholderText="/api/shipments" />
+				</StackPanel>
+
+				<StackPanel Grid.Column="2" Spacing="3">
+					<TextBlock Text="Branch Code" FontSize="11.5" FontWeight="SemiBold" Foreground="#475569" />
+					<TextBox Text="{Binding BranchCode}" PlaceholderText="BR-001" />
+				</StackPanel>
+
+				<StackPanel Grid.Column="3" Spacing="3">
+					<TextBlock Text="Test Mode (Optional)" FontSize="11.5" FontWeight="SemiBold" Foreground="#475569" />
+					<TextBox Text="{Binding Mode}" PlaceholderText="e.g. delay, empty" />
+				</StackPanel>
+
+				<StackPanel Grid.Column="4" Spacing="3">
+					<TextBlock Text="Timeout (s)" FontSize="11.5" FontWeight="SemiBold" Foreground="#475569" />
+					<TextBox Text="{Binding TimeoutSeconds}" />
+				</StackPanel>
+
+				<Button Grid.Column="5"
+                        Content="Normal Endpoint"
+                        Command="{Binding ResetToNormalEndpointCommand}"
+                        VerticalAlignment="Bottom"
+                        Padding="10,7" CornerRadius="6" />
+			</Grid>
+		</Border>
+
+		<!-- Row 2: Loading Bar & Feedback Alerts -->
+		<StackPanel Grid.Row="2" Spacing="6">
+			<ProgressBar IsIndeterminate="True"
+                         IsVisible="{Binding IsLoading}"
+                         Height="4" Foreground="#2563EB" />
+
+			<!-- Error Alert -->
+			<Border IsVisible="{Binding HasError}"
+                    Background="#FEF2F2" BorderBrush="#FCA5A5" BorderThickness="1"
+                    CornerRadius="6" Padding="12,8">
+				<Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+					<TextBlock Text="{Binding ErrorMessage}"
+                               Foreground="#991B1B" FontWeight="SemiBold"
+                               TextWrapping="Wrap" VerticalAlignment="Center" />
+					<Button Grid.Column="1" Content="Retry Now"
+                            Command="{Binding RetryCommand}"
+                            Background="#DC2626" Foreground="White"
+                            Padding="10,4" CornerRadius="4" />
+				</Grid>
+			</Border>
+
+			<!-- Stale Data Warning (Shown when refresh fails after a previous success) -->
+			<Border IsVisible="{Binding IsStaleData}"
+                    Background="#FFFBEB" BorderBrush="#FCD34D" BorderThickness="1"
+                    CornerRadius="6" Padding="12,8">
+				<TextBlock Text="{Binding StaleDataWarning}"
+                           Foreground="#92400E" FontWeight="SemiBold"
+                           TextWrapping="Wrap" />
+			</Border>
+
+			<!-- Valid Empty Branch Notice -->
+			<Border IsVisible="{Binding IsEmptyResult}"
+                    Background="#EFF6FF" BorderBrush="#93C5FD" BorderThickness="1"
+                    CornerRadius="6" Padding="12,8">
+				<TextBlock Text="{Binding EmptyResultMessage}"
+                           Foreground="#1E40AF" FontWeight="SemiBold"
+                           TextWrapping="Wrap" />
+			</Border>
+
+			<!-- Export Feedback Notice -->
+			<Border IsVisible="{Binding ExportFeedbackMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                    Background="#F8FAFC" BorderBrush="#CBD5E1" BorderThickness="1"
+                    CornerRadius="6" Padding="12,8">
+				<TextBlock Text="{Binding ExportFeedbackMessage}"
+                           Foreground="#0F172A" FontWeight="SemiBold"
+                           TextWrapping="Wrap" />
+			</Border>
+		</StackPanel>
+
+		<!-- Row 3: Operational Summary Cards (All Retrieved Branch Shipments) -->
+		<Grid Grid.Row="3" ColumnDefinitions="*,*,*,*,*" ColumnSpacing="10">
+			<Border Grid.Column="0" Background="White" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="8" Padding="14,10">
+				<StackPanel>
+					<TextBlock Text="TOTAL RETRIEVED" FontSize="11" FontWeight="Bold" Foreground="#64748B" />
+					<TextBlock Text="{Binding TotalCount}" FontSize="24" FontWeight="Bold" Foreground="#0F172A" />
+				</StackPanel>
+			</Border>
+
+			<Border Grid.Column="1" Background="White" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="8" Padding="14,10">
+				<StackPanel>
+					<TextBlock Text="PENDING" FontSize="11" FontWeight="Bold" Foreground="#D97706" />
+					<TextBlock Text="{Binding PendingCount}" FontSize="24" FontWeight="Bold" Foreground="#B45309" />
+				</StackPanel>
+			</Border>
+
+			<Border Grid.Column="2" Background="White" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="8" Padding="14,10">
+				<StackPanel>
+					<TextBlock Text="IN TRANSIT" FontSize="11" FontWeight="Bold" Foreground="#2563EB" />
+					<TextBlock Text="{Binding InTransitCount}" FontSize="24" FontWeight="Bold" Foreground="#1D4ED8" />
+				</StackPanel>
+			</Border>
+
+			<Border Grid.Column="3" Background="White" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="8" Padding="14,10">
+				<StackPanel>
+					<TextBlock Text="DELIVERED" FontSize="11" FontWeight="Bold" Foreground="#059669" />
+					<TextBlock Text="{Binding DeliveredCount}" FontSize="24" FontWeight="Bold" Foreground="#047857" />
+				</StackPanel>
+			</Border>
+
+			<Border Grid.Column="4" Background="White" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="8" Padding="14,10">
+				<StackPanel>
+					<TextBlock Text="EXCEPTION" FontSize="11" FontWeight="Bold" Foreground="#DC2626" />
+					<TextBlock Text="{Binding ExceptionCount}" FontSize="24" FontWeight="Bold" Foreground="#B91C1C" />
+				</StackPanel>
+			</Border>
+		</Grid>
+
+		<!-- Row 4: Filter Toolbar & Shipment DataGrid -->
+		<Border Grid.Row="4" Background="White" BorderBrush="#E2E8F0" BorderThickness="1"
+                CornerRadius="8" Padding="14">
+			<Grid RowDefinitions="Auto,*" RowSpacing="10">
+				<Grid Grid.Row="0" ColumnDefinitions="Auto,180,*,Auto" ColumnSpacing="10">
+					<TextBlock Grid.Column="0" Text="Filter by Status:"
+                               FontWeight="SemiBold" Foreground="#334155"
+                               VerticalAlignment="Center" />
+
+					<ComboBox Grid.Column="1"
+                              ItemsSource="{Binding StatusFilterOptions}"
+                              SelectedItem="{Binding SelectedStatusFilter}"
+                              HorizontalAlignment="Stretch" />
+
+					<TextBlock Grid.Column="3"
+                               VerticalAlignment="Center"
+                               Foreground="#64748B" FontSize="12.5">
+						<Run Text="Showing " />
+						<Run Text="{Binding DisplayedCount}" FontWeight="Bold" />
+						<Run Text=" of " />
+						<Run Text="{Binding TotalCount}" FontWeight="Bold" />
+						<Run Text=" shipment(s)" />
+					</TextBlock>
+				</Grid>
+
+				<DataGrid Grid.Row="1"
+                          ItemsSource="{Binding FilteredShipments}"
+                          AutoGenerateColumns="False"
+                          IsReadOnly="True"
+                          CanUserSortColumns="True"
+                          GridLinesVisibility="Horizontal"
+                          BorderBrush="#E2E8F0"
+                          BorderThickness="1">
+					<DataGrid.Columns>
+						<DataGridTextColumn Header="Tracking Number"
+                                            Binding="{Binding TrackingNumber}"
+                                            Width="1.2*" />
+						<DataGridTextColumn Header="Origin"
+                                            Binding="{Binding Origin}"
+                                            Width="1.5*" />
+						<DataGridTextColumn Header="Destination"
+                                            Binding="{Binding Destination}"
+                                            Width="1.5*" />
+						<DataGridTextColumn Header="Status"
+                                            Binding="{Binding Status}"
+                                            Width="1*" />
+						<DataGridTextColumn Header="Last Updated (UTC)"
+                                            Binding="{Binding FormattedLastUpdatedUtc}"
+                                            Width="1.5*" />
+					</DataGrid.Columns>
+				</DataGrid>
+			</Grid>
+		</Border>
+
+		<!-- Row 5: Footer Note -->
+		<TextBlock Grid.Row="5"
+                   Text="HubLink Partner Branch Client • Summary reflects all retrieved branch shipments; CSV export reflects currently displayed records."
+                   FontSize="11.5" Foreground="#64748B" HorizontalAlignment="Right" />
+	</Grid>
 </Window>

@@ -122,13 +122,27 @@
 			</Border>
 
 			<!-- Export Feedback Notice -->
-			<Border IsVisible="{Binding ExportFeedbackMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                    Background="#F8FAFC" BorderBrush="#CBD5E1" BorderThickness="1"
+
+
+			<!-- Export Success Notice -->
+			<Border IsVisible="{Binding IsExportSuccess}"
+                    Background="#ECFDF5" BorderBrush="#6EE7B7" BorderThickness="1"
                     CornerRadius="6" Padding="12,8">
 				<TextBlock Text="{Binding ExportFeedbackMessage}"
-                           Foreground="#0F172A" FontWeight="SemiBold"
+                           Foreground="#065F46" FontWeight="SemiBold"
                            TextWrapping="Wrap" />
 			</Border>
+
+			<!-- Export Error Notice -->
+			<Border IsVisible="{Binding IsExportError}"
+                    Background="#FEF2F2" BorderBrush="#FCA5A5" BorderThickness="1"
+                    CornerRadius="6" Padding="12,8">
+				<TextBlock Text="{Binding ExportFeedbackMessage}"
+                           Foreground="#991B1B" FontWeight="SemiBold"
+                           TextWrapping="Wrap" />
+			</Border>
+			
+			
 		</StackPanel>
 
 		<!-- Row 3: Operational Summary Cards (All Retrieved Branch Shipments) -->

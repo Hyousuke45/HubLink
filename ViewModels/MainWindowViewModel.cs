@@ -15,18 +15,29 @@ namespace HubLink.ViewModels;
 public partial class MainWindowViewModel : ViewModelBase
 {
     private readonly IShipmentApiService _apiService;
+    private readonly ICsvExportService _csvExportService;
     private readonly List<Shipment> _allShipments = new();
     private DateTimeOffset? _lastSuccessfulSyncUtc;
     private string? _lastSuccessfulBranchCode;
 
+    /// <summary>
+    /// Provided by the View layer to open the OS Save File dialog without coupling
+    /// the ViewModel to Avalonia window controls.
+    /// </summary>
+    public Func<string, Task<string?>>? SelectSaveFilePathAsync { get; set; }
+
     public MainWindowViewModel()
-        : this(new ShipmentApiService(), ConfigurationLoader.LoadApiSettings())
+        : this(new ShipmentApiService(), new CsvExportService(), ConfigurationLoader.LoadApiSettings())
     {
     }
 
-    public MainWindowViewModel(IShipmentApiService apiService, ApiSettings initialSettings)
+    public MainWindowViewModel(
+        IShipmentApiService apiService,
+        ICsvExportService csvExportService,
+        ApiSettings initialSettings)
     {
         _apiService = apiService ?? throw new ArgumentNullException(nameof(apiService));
+        _csvExportService = csvExportService ?? throw new ArgumentNullException(nameof(csvExportService));
         ArgumentNullException.ThrowIfNull(initialSettings);
 
         BaseUrl = initialSettings.BaseUrl;
@@ -46,6 +57,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         FilteredShipments = new ObservableCollection<Shipment>();
     }
+
 
     // --- Configurable Connection Settings (initialized from appsettings.json) ---
 
@@ -98,6 +110,11 @@ public partial class MainWindowViewModel : ViewModelBase
 
     [ObservableProperty]
     private bool _isExportError;
+
+
+    [ObservableProperty]
+    private bool _isExportSuccess;
+
 
     // --- Operational Summary Counts (Across ALL Retrieved Branch Shipments) ---
 
@@ -225,18 +242,67 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void ExportCsv()
+    private async Task ExportCsvAsync()
     {
+        ExportFeedbackMessage = null;
+        IsExportError = false;
+        IsExportSuccess = false;
+
         if (FilteredShipments.Count == 0)
         {
             IsExportError = true;
-            ExportFeedbackMessage = "No shipment records are currently displayed to export.";
+            ExportFeedbackMessage =
+                "Export skipped: No shipment records are currently displayed under the active filter.";
             return;
         }
 
-        IsExportError = false;
-        ExportFeedbackMessage = "CSV export will be connected in Phase 5.";
+        if (SelectSaveFilePathAsync is null)
+        {
+            IsExportError = true;
+            ExportFeedbackMessage = "Export failed: File save dialog is unavailable.";
+            return;
+        }
+
+        var safeBranch = string.IsNullOrWhiteSpace(BranchCode) ? "branch" : BranchCode.Trim();
+        var safeFilter = string.IsNullOrWhiteSpace(SelectedStatusFilter) ? "All" : SelectedStatusFilter.Trim();
+        var timestamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
+        var suggestedFileName = $"hublink-{safeBranch}-{safeFilter}-{timestamp}.csv";
+
+        string? selectedPath;
+        try
+        {
+            selectedPath = await SelectSaveFilePathAsync(suggestedFileName);
+        }
+        catch (Exception ex)
+        {
+            IsExportError = true;
+            ExportFeedbackMessage = $"Export failed while selecting destination file: {ex.Message}";
+            return;
+        }
+
+        // User cancelled the save file dialog
+        if (string.IsNullOrWhiteSpace(selectedPath))
+        {
+            return;
+        }
+
+        try
+        {
+            var recordsToExport = FilteredShipments.ToList();
+            await _csvExportService.ExportToFileAsync(selectedPath, recordsToExport);
+
+            IsExportSuccess = true;
+            ExportFeedbackMessage =
+                $"Exported {recordsToExport.Count} shipment record(s) (Filter: {safeFilter}) to '{selectedPath}'.";
+        }
+        catch (Exception ex)
+        {
+            IsExportError = true;
+            ExportFeedbackMessage =
+                $"CSV export failed: Unable to write file '{selectedPath}'. ({ex.Message})";
+        }
     }
+
 
     private void HandleFailedRetrieval(string failureReason)
     {

@@ -10,7 +10,7 @@ namespace HubLink.Services;
 
 public sealed class CsvExportService : ICsvExportService
 {
-    private const string HeaderRow = "Tracking Number,Origin,Destination,Status,LastUpdatedUtc";
+    private const string HeaderRow = "TrackingNumber,Origin,Destination,Status,LastUpdatedUtc";
 
     public string BuildCsvContent(IEnumerable<Shipment> shipments)
     {

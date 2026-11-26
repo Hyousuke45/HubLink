@@ -54,24 +54,10 @@ public sealed class ShipmentApiService : IShipmentApiService
         using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeoutCts.CancelAfter(TimeSpan.FromSeconds(timeoutSeconds));
 
-        HttpResponseMessage response;
+        
         try
         {
-            response = await _httpClient.GetAsync(requestUri, timeoutCts.Token);
-        }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
-        {
-            return ShipmentFetchResult.Failure(
-                $"Request timed out after {timeoutSeconds} second(s). The service took too long to respond.");
-        }
-        catch (HttpRequestException ex)
-        {
-            return ShipmentFetchResult.Failure(
-                $"Unable to reach the HubLink service at {requestUri.Authority}. Check that the service is running and the address is correct. ({ex.Message})");
-        }
-
-        using (response)
-        {
+            using var response = await _httpClient.GetAsync(requestUri, timeoutCts.Token);
             var rawBody = await response.Content.ReadAsStringAsync(timeoutCts.Token);
 
             if (!response.IsSuccessStatusCode)
@@ -87,6 +73,19 @@ public sealed class ShipmentApiService : IShipmentApiService
 
             return ParseAndValidatePayload(rawBody, settings.BranchCode.Trim());
         }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            return ShipmentFetchResult.Failure(
+                $"Request timed out after {timeoutSeconds} second(s). The service took too long to respond.");
+        }
+        catch (HttpRequestException ex)
+        {
+            return ShipmentFetchResult.Failure(
+                $"Unable to reach the HubLink service at {requestUri.Authority}. Check that the service is running and the address is correct. ({ex.Message})");
+        }
+
+
+       
     }
 
     private static string? TryExtractApiError(string rawBody)

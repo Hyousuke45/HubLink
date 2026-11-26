@@ -1,4 +1,4 @@
-Tracking Number,Origin,Destination,Status,LastUpdatedUtc
+TrackingNumber,Origin,Destination,Status,LastUpdatedUtc
 HUB-1001,Cagayan de Oro,Valencia,InTransit,2026-11-10T08:30:00Z
 HUB-1002,Iligan,Malaybalay,Pending,2026-11-09T13:15:00Z
 HUB-1003,Valencia,Cagayan de Oro,Delivered,2026-11-08T06:45:00Z

@@ -162,6 +162,8 @@ public partial class MainWindowViewModel : ViewModelBase
         IsEmptyResult = false;
         EmptyResultMessage = null;
         ExportFeedbackMessage = null;
+        IsExportSuccess = false;
+        IsExportError = false;
         SyncStatusBanner = $"Retrieving shipments for branch '{BranchCode.Trim()}'...";
 
         try
@@ -239,6 +241,8 @@ public partial class MainWindowViewModel : ViewModelBase
         EndpointPath = "/api/shipments";
         Mode = string.Empty;
         ExportFeedbackMessage = null;
+        IsExportSuccess = false;
+        IsExportError = false;
     }
 
     [RelayCommand]
@@ -263,12 +267,16 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
-        var safeBranch = string.IsNullOrWhiteSpace(BranchCode) ? "branch" : BranchCode.Trim();
+        
+     
+        var loadedBranch = !string.IsNullOrWhiteSpace(_lastSuccessfulBranchCode)
+            ? _lastSuccessfulBranchCode.Trim()
+            : (string.IsNullOrWhiteSpace(BranchCode) ? "branch" : BranchCode.Trim());
         var safeFilter = string.IsNullOrWhiteSpace(SelectedStatusFilter) ? "All" : SelectedStatusFilter.Trim();
         var timestamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
-        var suggestedFileName = $"hublink-{safeBranch}-{safeFilter}-{timestamp}.csv";
-
+        var suggestedFileName = $"hublink-{loadedBranch}-{safeFilter}-{timestamp}.csv";
         string? selectedPath;
+
         try
         {
             selectedPath = await SelectSaveFilePathAsync(suggestedFileName);
@@ -293,7 +301,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
             IsExportSuccess = true;
             ExportFeedbackMessage =
-                $"Exported {recordsToExport.Count} shipment record(s) (Filter: {safeFilter}) to '{selectedPath}'.";
+                $"Exported {recordsToExport.Count} shipment record(s) for {loadedBranch} (Filter: {safeFilter}) to '{selectedPath}'.";
         }
         catch (Exception ex)
         {
